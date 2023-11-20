@@ -2,35 +2,24 @@
 
 **Status: beta**
 
-As of `cw-storage-plus` `v0.12` the API should be quite stable.
+Status: Beta
 
-This has been heavily used in many production-quality contracts.
-The code has demonstrated itself to be stable and powerful.
-It has not been audited, and Confio assumes no liability, but we consider it mature enough
-to be the **standard storage layer** for your contracts.
+Welcome to cw-storage-plus version v0.12, a cornerstone library in the CosmWasm ecosystem, renowned for its stability and robustness. 
+This library serves as the backbone for numerous production-quality contracts, demonstrating exceptional reliability and power in real-world applications.
+While not formally audited and with no liability assumed by Confio, cw-storage-plus stands as the preferred and mature choice for smart contract storage needs.
 
-## Usage Overview
+## Comprehensive Usage Overview
 
-We introduce two main classes to provide a productive abstraction
-on top of `cosmwasm_std::Storage`. They are `Item`, which is
-a typed wrapper around one database key, providing some helper functions
-for interacting with it without dealing with raw bytes. And `Map`,
-which allows you to store multiple unique typed objects under a prefix,
-indexed by a simple or compound (eg. `(&[u8], &[u8])`) primary key.
+cw-storage-plus introduces two pivotal classes, Item and Map, as advanced abstractions over cosmwasm_std::Storage. 
+These classes represent a paradigm shift in how storage mechanisms are conceptualized and utilized within the CosmWasm ecosystem.
 
 ## Item
+Item is ingeniously crafted as a typed wrapper around a singular database key, enabling developers to interact with blockchain data without the complexities of raw byte handling. This model provides a seamless interface for data manipulation, fostering a development environment where safety and efficiency are paramount.
 
-The usage of an [`Item`](./src/item.rs) is pretty straight-forward.
-You must simply provide the proper type, as well as a database key not
-used by any other item. Then it will provide you with a nice interface
-to interact with such data.
-
-If you are coming from using `Singleton`, the biggest change is that
-we no longer store `Storage` inside, meaning we don't need read and write
-variants of the object, just one type. Furthermore, we use `const fn`
-to create the `Item`, allowing it to be defined as a global compile-time
-constant rather than a function that must be constructed each time,
-which saves gas as well as typing.
+## Technical Insights:
+- Type Safety: Item ensures robust type consistency, thereby reducing runtime errors and enhancing code clarity.
+- Gas Efficiency: The use of const fn for Item instantiation signifies a shift towards compile-time constant definitions, leading to substantial gas savings and reduced operational costs.
+- Singleton Transition: Developers accustomed to Singleton will notice that Item doesn't encapsulate Storage, streamlining the read/write process and eliminating the need for separate object variants.
 
 Example Usage:
 
@@ -92,29 +81,22 @@ fn demo() -> StdResult<()> {
 
 ## Map
 
-The usage of a [`Map`](./src/map.rs) is a little more complex, but
-is still pretty straight-forward. You can imagine it as a storage-backed
-`BTreeMap`, allowing key-value lookups with typed values. In addition,
-we support not only simple binary keys (like `&[u8]`), but tuples, which are
-combined. This allows us by example to store allowances as composite keys,
-i.e. `(owner, spender)` to look up the balance.
+Map in cw-storage-plus, though a bit more complex than Item, is still straightforward to use. 
+Conceptually, it's akin to a storage-backed BTreeMap, allowing you to perform key-value lookups with typed values. 
+It supports a variety of key types:
 
-Beyond direct lookups, we have a super-power not found in Ethereum -
-iteration. That's right, you can list all items in a `Map`, or only
-part of them. We can efficiently allow pagination over these items as
-well, starting at the point the last query ended, with low gas costs.
-This requires the `iterator` feature to be enabled in `cw-storage-plus`
-(which automatically enables it in `cosmwasm-std` as well, and which is
-enabled by default).
+Simple Binary Keys: For example, &[u8], allowing basic key-value associations.
+Composite Keys (Tuples): Such as (owner, spender), enabling more nuanced data relationships like storing allowances based on account owner and spender.
+One of the exceptional features of Map is its capability for iteration. This is a powerful tool not typically found in Ethereum's smart contract ecosystem. With Map, you can:
 
-If you are coming from using `Bucket`, the biggest change is that
-we no longer store `Storage` inside, meaning we don't need read and write
-variants of the object, just one type. Furthermore, we use `const fn`
-to create the `Bucket`, allowing it to be defined as a global compile-time
-constant rather than a function that must be constructed each time,
-which saves gas as well as typing. In addition, the composite indexes
-(tuples) are more ergonomic and expressive of intention, and the range
-interface has been improved.
+List All Items: Either all the items stored in the Map or only a specific subset.
+Efficient Pagination: Iteratively access these items, starting from where the last query ended, and do so with minimal gas costs. This feature is enabled by default thanks to the iterator feature in cw-storage-plus and cosmwasm-std.
+For developers transitioning from using Bucket, the major change in Map is its internal handling of Storage. Unlike Bucket, Map doesn’t encapsulate Storage inside. This means:
+
+No Need for Read and Write Variants: Simplifying the object model to just one type.
+Use of const fn for Initialization: Allowing Map to be defined as a global compile-time constant. This not only saves gas but also simplifies code, as you don’t need to construct a Map instance each time it's used.
+Improved Composite Indexes and Range Interface: The use of tuples for keys is more ergonomic and expressive, and the range interface for queries has been improved, making data handling more efficient.
+
 
 Here is an example with normal (simple) keys:
 
@@ -180,35 +162,30 @@ fn demo() -> StdResult<()> {
 }
 ```
 
-### Key types
+## Key Types in 'cw-storage-plus'
 
-A `Map` key can be anything that implements the `PrimaryKey` trait. There are a series of implementations of
-`PrimaryKey` already provided (see [keys.rs](./src/keys.rs)):
+In 'cw-storage-plus', the versatility of Map is greatly enhanced by its ability to utilize a variety of key types, as determined by the 'PrimaryKey' trait. This flexibility allows developers to tailor data structures according to the specific requirements of their smart contracts.
 
- - `impl<'a> PrimaryKey<'a> for &'a [u8]`
- - `impl<'a> PrimaryKey<'a> for &'a str`
- - `impl<'a> PrimaryKey<'a> for Vec<u8>`
- - `impl<'a> PrimaryKey<'a> for String`
- - `impl<'a> PrimaryKey<'a> for Addr`
- - `impl<'a, const N: usize> PrimaryKey<'a> for [u8; N]`
- - `impl<'a, T: Prefixer<'a>> Prefixer<'a> for &'a T`
- - `impl<'a, T: PrimaryKey<'a> + Prefixer<'a>, U: PrimaryKey<'a>> PrimaryKey<'a> for (T, U)`
- - `impl<'a, T: PrimaryKey<'a> + Prefixer<'a>, U: PrimaryKey<'a> + Prefixer<'a>, V: PrimaryKey<'a>> PrimaryKey<'a> for (T, U, V)`
- - `PrimaryKey` implemented for unsigned integers up to `u128`
- - `PrimaryKey` implemented for signed integers up to `i128`
+## Implementations of PrimaryKey
+-Binary Slices (&[u8]): Fundamental for representing raw binary data, suitable for compact and efficient storage.
+-String Slices (&str): Ideal for human-readable keys, commonly used for identifiers that are textual in nature.
+-Byte Vectors (Vec<u8>): Offer flexibility in key size, useful for dynamically constructed keys.
+-Owned Strings (String): Similar to string slices but for scenarios where key ownership and mutability are required.
+-Blockchain Addresses (Addr): Specifically optimized for blockchain address formats, ensuring validity and consistency in address-based keys.
+-Fixed-Size Byte Arrays ([u8; N]): Useful for keys with a fixed size, providing a balance between performance and predictability.
+-Composite Keys (Tuples): Enable complex data relationships and queries by combining multiple key components. Particularly powerful in scenarios where data is categorized or relational.
 
-That means that byte and string slices, byte vectors, and strings, can be conveniently used as keys.
-Moreover, some other types can be used as well, like addresses and address references, pairs, triples, and
-integer types.
+## Address Keys and Validation
+- Using 'Addr' over Strings: When keys represent blockchain addresses, using '&Addr' instead of string types is advisable. This ensures that the address is valid and correctly formatted, preventing errors and inconsistencies.
+- Address Validation: Utilize 'addr_validate' for any address input, converting it into an 'Addr' type. This validation is crucial to ensure that the addresses used as keys are legitimate and not arbitrary or malformed strings.
+  
+## Efficiency Considerations
+- Reference vs. Value: Favoring references (like &Addr) over owned values (like Addr) can significantly reduce memory usage and processing time, especially in read-heavy scenarios where cloning can be avoided.
+- Optimal Key Selection: The choice of key type should be guided by the nature of the data and the operations to be performed. For instance, using &[u8] or &str for simple lookups, Vec<u8> for variable-length keys, or Addr for address-based data.
+## Practical Implications
+Understanding these key types and their implementations is vital for creating efficient and robust data structures in 'cw-storage-plus'. The choice of key type affects not only the performance of data operations but also the ease of development and maintenance of smart contracts. Developers should carefully consider their data modeling needs and choose key types that align with their contract's functionality and performance requirements.
 
-If the key represents an address, we suggest using `&Addr` for keys in storage, instead of `String` or string slices.
-This implies doing address validation through `addr_validate` on any address passed in via a message, to ensure it's a
-legitimate address, and not random text which will fail later.
-`pub fn addr_validate(&self, &str) -> Addr` in `deps.api` can be used for address validation, and the returned `Addr`
-can then be conveniently used as key in a `Map` or similar structure.
 
-It's also convenient to use references (i.e. borrowed values) instead of values for keys (i.e. `&Addr` instead of `Addr`),
-as that will typically save some cloning during key reading / writing.
 
 ### Composite Keys
 
